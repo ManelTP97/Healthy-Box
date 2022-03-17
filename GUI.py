@@ -9,89 +9,43 @@ except:
     import os.path
     import serial
     import time
-    from threading import Thread
-    #import RPi.GPIO as GPIO
-    #import BME680
-    #import SGP30
-    #import SPS30
+    import threading
+    import Monitor
+
 
 datei = None
 mat = None
 
-def getdoorSignal():
-    pinhall = 17
-    print('Hey')
-    #GPIO.setmode(GPIO.BCM)
-    #GPIO.setup(pinhall, GPIO.IN)
-    #GPIO.add_event_detected(pinhall, GPIO.RISING)
 
-    #if GPIO.event_detected(pinhall):
-        #print("Hey")
-
-def getNC():
-    sps30 = SPS30.SPS30()
-    sps30.NC()
-
-def getPM():
-    sps30 = SPS30.SPS30()
-    sps30.PM()
-
-def geteCO2():
-    sgp = SGP30.SGP30()
-    sgp.geteCO2()
-
-def getTVOC():
-    sgp = SGP30.SGP30()
-    sgp.getTVOC()
-
-def getGas():
-    bme = BME680.BME680()
-    bme.getGas()
-
-def getTemp():
-    bme = BME680.BME680()
-    bme.getTemps()
-
-def venton():
-    pinvent = 22
-    print('Hey')
-    #GPIO.setmode(GPIO.BCM)
-    #GPIO.setup(pinvent, GPIO.OUT)
-    #GPIO.output(pinvent, 1)
-
-def ventoff():
-    pinvent = 22
-    print('Hey')
-    #GPIO.setmode(GPIO.BCM)
-    #GPIO.setup(pinvent, GPIO.OUT)
-    #GPIO.output(pinvent, 0)
-
-def dooropen():
-    pindoor = 27
-    print('Hey')
-    #GPIO.setmode(GPIO.BCM)
-    #GPIO.setup(pindoor, GPIO.OUT)
-    #GPIO.output(pindoor, 1)
-
-def doorclose():
-    pindoor = 27
-    print('Hey')
-    #GPIO.setmode(GPIO.BCM)
-    #GPIO.setup(pindoor, GPIO.OUT)
-    #GPIO.output(pindoor, 0)
+def sense():
+    sens = Monitor.Monitor()
+    f = sens.getTemp()
+    print("Hey ", f)
 
 
 def hoch(ser):
     print('Hey')
-    ser.write('G28')
+    cmd = bytes('G28\n', 'utf-8')
+    ser.write(cmd)
 
 
 def runter(ser):
     ser.write('G1 Z1')
 
+
 def endprint():
     ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
-    ser.write('M0') #Vielleicht auch 410
+    # cmd = bytes('\nM410\n', 'utf-8')
+    cmd = bytes('M0 Click to continue', 'utf-8')
+    ser.write(cmd)  # Vielleicht auch 410
+
+
+def restart():
+    print("Hey")
+    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+    # cmd = bytes('M108\n', 'utf-8')
+    cmd = bytes('G28\n', 'utf-8')
+    ser.write(cmd)  # Vielleicht auch 410
 
 
 def openData(self):
@@ -99,7 +53,10 @@ def openData(self):
     global datei
     global tail
 
-    datei = filedialog.askopenfile(initialdir="/media/pi/", title="Select A File",
+    # datei = filedialog.askopenfile(initialdir="/media/pi/", title="Select A File",
+    #                               filetypes=(("gcode", "*.gcode"), ("all files", "*.*")))
+
+    datei = filedialog.askopenfile(initialdir="/home/pi/serial/", title="Select A File",
                                    filetypes=(("gcode", "*.gcode"), ("all files", "*.*")))
 
     if datei is not None:
@@ -108,10 +65,9 @@ def openData(self):
     self.master.switch_frame(StartPage)
 
 
-def goprint():
+def printing():
     incomming = ''
     ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
-
     time.sleep(5)
 
     for zeile in datei:
@@ -131,7 +87,21 @@ def goprint():
             print(str(incomming))
     time.sleep(5)
     ser.close()
+    print("fertig")
     # datei=None
+
+
+def test(self):
+    self.master.switch_frame(Print)
+
+
+def goprint(self):
+    t1 = threading.Thread(target=printing)
+    t2 = threading.Thread(target=test(self))
+
+    t1.start()
+    t2.start()
+
 
 class SampleApp(tk.Tk):
     def __init__(self):
@@ -156,7 +126,7 @@ class StartPage(tk.Frame):
         tk.Label(self, text="Start page", font=('Helvetica', 18, "bold")).pack(side="top", fill="x", pady=5)
 
         btn1 = tk.Button(self, text="Datei auswählen",
-                  command=lambda: openData(self))
+                         command=lambda: openData(self))
         btn1.pack()
 
         self.label = tk.Label(self, text="Keine Datei")
@@ -164,7 +134,6 @@ class StartPage(tk.Frame):
 
         if datei is not None:
             self.label['text'] = str(tail)
-
 
         tk.Button(self, text="Material auswählen",
                   command=lambda: master.switch_frame(Material)).pack()
@@ -188,6 +157,7 @@ class StartPage(tk.Frame):
 
         tk.Button(self, text="Bedienung",
                   command=lambda: master.switch_frame(Bedienung)).pack()
+
 
 class Material(tk.Frame):
 
@@ -221,10 +191,8 @@ class Print(tk.Frame):
         tk.Frame.configure(self, bg='blue')
         tk.Label(self, text="Drucken", font=('Helvetica', 18, "bold")).pack(side="top", fill="x", pady=5)
 
-
-
         btn1 = tk.Button(self, text="Druck starten",
-                  command=lambda: goprint())
+                         command=lambda: goprint(self))
         btn1.pack()
 
         if datei is None or mat is None:
@@ -235,6 +203,9 @@ class Print(tk.Frame):
         tk.Button(self, text="Druck stoppen",
                   command=lambda: endprint()).pack()
 
+        tk.Button(self, text="Druck fortführen",
+                  command=lambda: restart()).pack()
+
         tk.Button(self, text="Go back to start page",
                   command=lambda: master.switch_frame(StartPage)).pack()
 
@@ -242,19 +213,22 @@ class Print(tk.Frame):
 class Bedienung(tk.Frame):
 
     def __init__(self, master):
-
         tk.Frame.__init__(self, master)
         tk.Frame.configure(self, bg='blue')
         tk.Label(self, text="Bedienung", font=('Helvetica', 18, "bold")).pack(side="top", fill="x", pady=5)
 
-        #ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
-        ser = 1
+        ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+        # ser = 1
+
+        tk.Button(self, text="Sensor",
+                  command=lambda: sense()).pack()
 
         tk.Button(self, text="Hoch",
                   command=lambda: hoch(ser)).pack()
 
         tk.Button(self, text="Go back to start page",
                   command=lambda: master.switch_frame(StartPage)).pack()
+
 
 if __name__ == "__main__":
     app = SampleApp()
