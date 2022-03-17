@@ -16,9 +16,17 @@ except:
 datei = None
 mat = None
 
+def control():
+    cont = Monitor.Monitoring()
+
+    temp = cont.getTemp()
+    eCO2 = cont.geteCO2()
+    TVOC = cont.getTVOC()
+    PM = cont.getPM()
+    NC = cont.getNC()
 
 def sense():
-    sens = Monitor.Monitor()
+    sens = Monitor.Monitoring()
     f = sens.getTemp()
     print("Hey ", f)
 
