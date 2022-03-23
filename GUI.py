@@ -6,6 +6,7 @@ except:
     import tkinter as tk
     from tkinter import filedialog
     from tkinter import ttk
+    import messagebox
     import os.path
     import serial
     import time
@@ -29,6 +30,7 @@ def sense():
     sens = Monitor.Monitoring()
     f = sens.getTemp()
     print("Hey ", f)
+
 
 
 def hoch(ser):
@@ -74,28 +76,34 @@ def openData(self):
 
 
 def printing():
-    incomming = ''
-    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
-    time.sleep(5)
 
-    for zeile in datei:
-        # msg = bytes(zeile, 'utf-8')
-        msgs = zeile.split(";")[0]
-        msg = bytes(msgs + '\n', 'utf-8')
-        # print(msgs)
-        # print(type(msgs))
-        # msg=zeile.encode()
-        # time.sleep(0.3)
-        ser.write(msg)
+    door = Monitor.Monitoring()
+    if door.getDoor() == 1:
+        incomming = ''
+        ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+        time.sleep(5)
 
-        while True:
-            incomming = ser.readline()
-            if incomming == bytes('', 'utf-8'):
-                break
-            print(str(incomming))
-    time.sleep(5)
-    ser.close()
-    print("fertig")
+        for zeile in datei:
+            # msg = bytes(zeile, 'utf-8')
+            msgs = zeile.split(";")[0]
+            msg = bytes(msgs + '\n', 'utf-8')
+            # print(msgs)
+            # print(type(msgs))
+            # msg=zeile.encode()
+            # time.sleep(0.3)
+            ser.write(msg)
+
+            while True:
+                incomming = ser.readline()
+                if incomming == bytes('', 'utf-8'):
+                    break
+                print(str(incomming))
+        time.sleep(5)
+        ser.close()
+        print("fertig")
+
+    else:
+        messagebox.showerror("Fehler", "Tür ist nicht geschlossen")
     # datei=None
 
 
